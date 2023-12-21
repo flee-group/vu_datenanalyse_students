@@ -4,6 +4,43 @@ library(MASS)
 lipids<-read.table(file="data/BacterialMembrane.txt",header=TRUE)
 names(lipids)
 
+# t.test for acclimation effect in warm isolates only
+lipids_warm = lipids[lipids$isolate == 'warm',]
+boxplot(SA_branprop~temperature,data=lipids_warm)
+t.test(SA_branprop~temperature,data=lipids_warm)
+
+boxplot(FA1_SAnb~temperature,data=lipids_warm)
+t.test(FA1_SAnb~temperature,data=lipids_warm)
+
+# permutation-based testing for acclimation effect in warm isolates
+# several "homemade" TSs possible: difference of rank sums between samples, difference of sample means, difference of sample means weighted by variance, just the formula of the t-statistic anyway. 
+# rank(x) # to get ranks of a vector if such a transformation is desired
+# sample(x) # creates a random permutation of x
+
+R<-rank(lipids_warm$SA_branprop)
+#R<-rank(lipids_warm$FA1_SAnb) # rerun followinglines with this one included for the other variable
+RS6<-sum(R[lipids_warm$temperature==6])
+RS28<-sum(R[lipids_warm$temperature==28])
+TS_emp<-RS6-RS28
+
+temperature<-lipids_warm$temperature
+# schematically (!!) your code will have to look this:
+TS_p<-numeric(999) # a vector to collect TS computed after permutation
+for (i in 1:999) {
+  temp_p = sample(temperature) # random assignment of temp to objects
+  RS6_p = sum(R[temp_p == 6]) # 
+  RS28_p =  sum(R[temp_p == 28]) # same for second temp treatment
+  TS_p[i] = RS6_p-RS28_p# computing your TS
+}
+## null distribution of TSs
+hist(TS_p)
+
+# assess how likely your "empirical" TS is given this null distribution
+# the "empirical" one is the TS computed for the unpermuted data!
+abline(v = TS_emp, col='red', lwd=2)
+sum(RSD>=TS_emp)/1000
+
+# multivariate analysis using dissimilarity
 library(vegan)
 lipids2<-lipids[,4:20] # choose only FA columns
 apply(lipids2,1,sum) # confirm proportional data
@@ -60,7 +97,7 @@ col.isolate = as.character(lipids$isolate)
 col.isolate[col.isolate == "warm"] = cols[1]
 col.isolate[col.isolate == "cold"] = cols[2]
 
-plot(pcoa$points,pch=pch.temperature,bg=col.isolate) # score plot
+plot(pcoa$points,pch=pch.temperature,bg=col.isolate,cex=2) # score plot
 
 # to show variables
 plot(envfit(pcoa,env=lipids2))
@@ -89,6 +126,27 @@ ordispider(mds_lipids,combifac)
 ordihull()
 ordiellipse()
 ordicluster()
+
+# PERMANOVA, tests for differences in location
+adonis(lipids2~lipids$temperature*lipids$isolate,method="bray")
+adonis(dmat~isolate*temperature,data=lipids)
+# the hypotheses for this are:
+# H0 isolate affects fatty acid composition
+# H0 temp affects fatty acid composition
+# H0 temp effect on fatty acid composition differs between isolates
+
+# betadisper to test for differences in dispersion
+bd<betadisper(dmat,group=combifac)
+bd$distances # these are the distances to group centroids
+
+permutest(bd)
+anova(bd)
+anova(lm(bd$distances~isolate*temperature,data=lipids))
+
+# conclude:
+# 1) we can´t find differences in dispersion among groups
+# 2) Fatty acid composition differs between isolates and is affected by temperature. 
+#    There is no interaction. Acclimation and Adaptation reactions are different.
 
 
 
