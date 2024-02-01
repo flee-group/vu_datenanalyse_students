@@ -1,5 +1,6 @@
 library(vegan)
 library(MASS)
+library(shape) # just for better arrows drawing
 
 DOM<-read.table(file="data/DOM_Berlin_Romero.txt",header=TRUE)
 names(DOM)
@@ -44,7 +45,6 @@ DOM$pch.season<-DOM$Season
 levels(DOM$pch.season)<-c(21:24)
 DOM$pch.season<-as.numeric(as.character(DOM$pch.season))
 
-
 # plot scores
 plot(pca$x[,1],pca$x[,2],pch=DOM$pch.season,col=DOM$col.type,cex=2,lwd=2,
      xlab="PC1 (35.5%)", ylab="PC2 (19.7%)")
@@ -53,6 +53,20 @@ ordiellipse(pca,groups=DOM$Site)
 # run 2-way ANOVA
 m<-lm(pca$x[,1]~Season*Type,data=DOM)
 anova(m)
+# could do Bartlett-test, etc...
+# a bit sloppy because it ignores repeated measures for each site
+
+meanPC1<-tapply(pca$x[,1],DOM$Site,mean) # site-specific average location on PC1
+varPC1<-tapply(pca$x[,1],DOM$Site,var) # site-specific seasonal variance on PC1
+meanType<-DOM$Type[match(names(meanPC1),DOM$Site)]
+
+boxplot(meanPC1~meanType)
+m2<-lm(meanPC1~meanType)
+anova(m2)
+
+boxplot(sqrt(varPC1)~meanType)
+m3<-lm(sqrt(varPC1)~meanType)
+anova(m3)
 
 # correlation biplot here
 x11() # new graphical device
@@ -85,8 +99,9 @@ m1<-lm(pca$x[,1]~., data=DOM4)
 summary(m1)
 
 # do this much better with a RDA
-xmat<-DOM4
-myrda<-rda(DOM2~.,data=xmat)
+zDOM2<-scale(DOM2) # must at least be centered even if dimensionally homogeneous!
+xmat<-DOM4 # the constraints (or drivers or predictors)
+myrda<-rda(zDOM2~.,data=xmat)
 
 anova(myrda)
 anova(myrda,by="axis",model="direct",perm.max=9999,step=1000)
@@ -98,7 +113,7 @@ anova(myrda,by="margin",model="direct",perm.max=9999,step=1000)
 (species<-scores(myrda,choices=c(1,2),display="species",scaling=1)*0.3)
 (constraints<-scores(myrda,choices=c(1,2),display="bp",scaling=1)*5) 
 
-layout(matrix(1:2,1,2)) # make room for 2 plots
+layout(matrix(1:4,2,2)) # make room for 2 plots
 plot(sites,asp=1,pch=DOM$pch.season,col=DOM$col.type,cex=2,lwd=2)
 #plot(lcs,asp=1,pch=DOM$pch.season,col=DOM$col.type,cex=2,lwd=2)
 
