@@ -25,8 +25,8 @@ TS_emp<-RS6-RS28
 
 temperature<-lipids_warm$temperature
 # schematically (!!) your code will have to look this:
-TS_p<-numeric(999) # a vector to collect TS computed after permutation
-for (i in 1:999) {
+TS_p<-numeric(1000) # a vector to collect TS computed after permutation
+for (i in 1:1000) {
   temp_p = sample(temperature) # random assignment of temp to objects
   RS6_p = sum(R[temp_p == 6]) # 
   RS28_p =  sum(R[temp_p == 28]) # same for second temp treatment
@@ -38,7 +38,7 @@ hist(TS_p)
 # assess how likely your "empirical" TS is given this null distribution
 # the "empirical" one is the TS computed for the unpermuted data!
 abline(v = TS_emp, col='red', lwd=2)
-sum(RSD>=TS_emp)/1000
+sum(TS_p>=TS_emp)/1000
 
 # multivariate analysis using dissimilarity
 library(vegan)
